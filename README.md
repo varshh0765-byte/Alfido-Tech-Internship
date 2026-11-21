@@ -1,4 +1,6 @@
 # Dockerized Node.js + PostgreSQL App
+![CI/CD Pipeline](https://github.com/varshh0765-byte/Alfido-Tech-Internship/actions/workflows/ci-cd.yml/badge.svg)
+![Docker Image](https://img.shields.io/docker/v/varsh0711/alfido-node-app?label=docker%20hub)
 
 A small Express API that records visits in a PostgreSQL database, containerized with a
 multi-stage Dockerfile and orchestrated with Docker Compose.
