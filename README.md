@@ -78,10 +78,13 @@ docker compose restart
 curl localhost:3000/visits   # count continues, data lives in the `pgdata` volume
 ```
 
-## Screenshots to capture
+## Screenshots
 
-1. `docker compose ps` showing `app-web` and `app-db` running.
-2. Browser or `curl` output of `http://localhost:3000/visits`.
+### Containers running
+![Containers running](Screenshots/containers-running.png)
+
+### Endpoint output
+![Endpoint output](Screenshots/endpoint-output.png)
 
 ## Publish to GitHub
 
