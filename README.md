@@ -1,60 +1,100 @@
-# Task 3: Monitoring, Logging and Incident Playbook
+# Dockerized Node.js + PostgreSQL App
+![CI/CD Pipeline](https://github.com/varshh0765-byte/Alfido-Tech-Internship/actions/workflows/ci-cd.yml/badge.svg)
+![Docker Image](https://img.shields.io/docker/v/varsh0711/alfido-node-app?label=docker%20hub)
 
-Adds monitoring to the Node.js + PostgreSQL app from Task 1:
+A small Express API that records visits in a PostgreSQL database, containerized with a
+multi-stage Dockerfile and orchestrated with Docker Compose.
 
-- **Metrics:** the app exposes `/metrics` (prom-client). Prometheus scrapes it every 5 seconds.
-- **Dashboard:** Grafana, with a provisioned "App Overview" dashboard.
-- **Alerts:** two Prometheus rules, `AppDown` and `HighErrorRate`.
-- **Logging:** the app writes structured JSON logs to stdout; Docker collects them (rotated, max 3 x 10 MB) and you read them with `docker compose logs`.
-- **Incident playbook:** see [INCIDENT-PLAYBOOK.md](INCIDENT-PLAYBOOK.md).
+## Project structure
 
-## Services and ports
+```
+.
+├── src/server.js         # Express app
+├── package.json
+├── Dockerfile            # Multi-stage build (deps -> runtime)
+├── docker-compose.yml    # App + PostgreSQL
+├── .dockerignore
+├── .env.example          # Copy to .env
+└── README.md
+```
 
-| Service | URL | Notes |
-|---------|-----|-------|
-| App | http://localhost:3000 | `/`, `/health`, `/visits`, `/error`, `/metrics` |
-| Prometheus | http://localhost:9090 | Targets, queries, Alerts |
-| Grafana | http://localhost:3001 | login `admin` / `admin` |
+## Endpoints
 
-## Run
+| Route      | Description                                   |
+|------------|-----------------------------------------------|
+| `/`        | Hello message                                 |
+| `/health`  | Health check (verifies DB connectivity)       |
+| `/visits`  | Inserts a visit row, returns the total count  |
+
+## Prerequisites
+
+- Docker 24+ and Docker Compose v2 (`docker compose version`)
+
+## Run with Docker Compose (app + DB)
 
 ```bash
-cd task3-monitoring
+cp .env.example .env        # edit credentials if you like
 docker compose up --build -d
-docker compose ps
+docker compose ps           # both containers should be running / healthy
 ```
 
-## Generate traffic
+Test it:
 
 ```bash
-for i in $(seq 1 50); do curl -s localhost:3000/visits > /dev/null; curl -s localhost:3000/ > /dev/null; done
+curl http://localhost:3000/
+curl http://localhost:3000/health
+curl http://localhost:3000/visits    # run repeatedly; the count increases
 ```
 
-## View logs
+View logs / stop:
 
 ```bash
 docker compose logs -f app
-docker compose logs app | grep '"level":"error"'
+docker compose down          # stop, keep data
+docker compose down -v       # stop and delete the database volume
 ```
 
-## Simulate incidents
+## Build and run the image on its own
 
-**1. Database failure (HighErrorRate):**
 ```bash
-docker compose stop db
-for i in $(seq 1 100); do curl -s localhost:3000/visits > /dev/null; sleep 0.5; done
+docker build -t node-docker-app .
+docker run --rm -p 3000:3000 \
+  -e DB_HOST=<db-host> -e DB_USER=appuser -e DB_PASSWORD=apppass -e DB_NAME=appdb \
+  node-docker-app
 ```
-Prometheus -> Alerts shows `HighErrorRate` as Pending then Firing. Recover with `docker compose start db`.
 
-**2. App down (AppDown):**
+(The app needs a reachable PostgreSQL, so Compose is the easiest route.)
+
+## Dockerfile design
+
+- **Stage 1 (`deps`)**: installs production dependencies only.
+- **Stage 2 (`runtime`)**: copies `node_modules` and source into a clean alpine image,
+  runs as the non-root `node` user, and defines a `HEALTHCHECK`.
+- `.dockerignore` keeps the build context small and keeps `.env` out of the image.
+
+## Verify persistence
+
 ```bash
-docker compose stop app
+curl localhost:3000/visits
+docker compose restart
+curl localhost:3000/visits   # count continues, data lives in the `pgdata` volume
 ```
-After about 15 seconds `AppDown` fires. Recover with `docker compose start app`.
 
-## Stop
+## Screenshots
+
+### Containers running
+![Containers running](Screenshots/containers-running.png)
+
+### Endpoint output
+![Endpoint output](Screenshots/endpoint-output.png)
+
+## Publish to GitHub
 
 ```bash
-docker compose down        # keep data
-docker compose down -v     # delete data volumes
+git init
+git add .
+git commit -m "Containerize Node app with Docker and Compose"
+git branch -M main
+git remote add origin https://github.com/<your-username>/docker-node-app.git
+git push -u origin main
 ```
